@@ -305,7 +305,8 @@ namespace bgfx
 	static BX_THREAD_LOCAL uint32_t s_threadIndex(0);
 #endif
 
-	static Context* s_ctx = NULL;
+	//static Context* s_ctx = NULL;
+	Context* s_ctx = NULL;
 	static bool s_renderFrameCalled = false;
 	InternalData g_internalData;
 	PlatformData g_platformData;

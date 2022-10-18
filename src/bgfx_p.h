@@ -5359,6 +5359,7 @@ namespace bgfx
 		typedef UpdateBatchT<256> TextureUpdateBatch;
 		BX_ALIGN_DECL_CACHE_LINE(TextureUpdateBatch m_textureUpdateBatch);
 	};
+	extern Context* s_ctx;
 
 #undef BGFX_API_FUNC
 
