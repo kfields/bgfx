@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2022 Branimir Karadzic. All rights reserved.
+ * Copyright 2011-2023 Branimir Karadzic. All rights reserved.
  * License: https://github.com/bkaradzic/bgfx/blob/master/LICENSE
  */
 
@@ -883,7 +883,20 @@ namespace bgfx { namespace d3d11
 
 			errorState = ErrorState::LoadedDXGI;
 
-			if (NULL == m_device)
+			if (NULL != m_device)
+			{
+				m_device->AddRef();
+				m_device->GetImmediateContext(&m_deviceCtx);
+
+				if (NULL == m_deviceCtx)
+				{
+					BX_TRACE("Init error: Unable to retrieve Direct3D11 ImmediateContext.");
+					goto error;
+				}
+
+				m_featureLevel = m_device->GetFeatureLevel();
+			}
+			else
 			{
 				if (NULL != m_renderDocDll)
 				{
@@ -963,18 +976,6 @@ namespace bgfx { namespace d3d11
 					BX_TRACE("Init error: Unable to create Direct3D11 device.");
 					goto error;
 				}
-			}
-			else
-			{
-				m_device->GetImmediateContext(&m_deviceCtx);
-
-				if (NULL == m_deviceCtx)
-				{
-					BX_TRACE("Init error: Unable to retrieve Direct3D11 ImmediateContext.");
-					goto error;
-				}
-
-				m_featureLevel = m_device->GetFeatureLevel();
 			}
 
 			m_dxgi.update(m_device);
@@ -3254,22 +3255,10 @@ namespace bgfx { namespace d3d11
 					break;
 
 				case TextureD3D11::TextureCube:
-					if (_compute)
-					{
-						desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
-						desc.Texture2DArray.MostDetailedMip = _mip;
-						desc.Texture2DArray.MipLevels       = 1;
-						desc.Texture2DArray.FirstArraySlice = 0;
-						desc.Texture2DArray.ArraySize       = 6;
-					}
-					else
-					{
-						desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
-						desc.TextureCube.MostDetailedMip = _mip;
-						desc.TextureCube.MipLevels       = 1;
-					}
+					desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
+					desc.TextureCube.MostDetailedMip = _mip;
+					desc.TextureCube.MipLevels       = 1;
 					break;
-
 				case TextureD3D11::Texture3D:
 					desc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
 					desc.Texture3D.MostDetailedMip = _mip;
