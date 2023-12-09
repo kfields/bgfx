@@ -21,7 +21,7 @@
 [![Join the chat at https://discord.gg/9eMbv7J](https://img.shields.io/discord/712512073522872352?color=%237289DA&label=bgfx&logo=discord&logoColor=white)](https://discord.gg/9eMbv7J)
 
  * [GitHub Discussions](https://github.com/bkaradzic/bgfx/discussions)
- * [Discord Chat](https://discord.gg/9eMbv7J)
+ * [Discord Chat](https://discord.gg/g99upRc9pf)
  * [GitHub Actions](https://github.com/bkaradzic/bgfx/actions)
 
 [What is it?](https://bkaradzic.github.io/bgfx/overview.html)
@@ -32,7 +32,6 @@ rendering library.
 
 Supported rendering backends:
 
- * Direct3D 9
  * Direct3D 11
  * Direct3D 12
  * GNM (only for licensed PS4 developers, search DevNet forums for source)
@@ -44,7 +43,6 @@ Supported rendering backends:
  * Vulkan
  * WebGL 1.0
  * WebGL 2.0
- * WebGPU/Dawn (experimental)
 
 Supported platforms:
 
@@ -531,11 +529,44 @@ hot-reloading.
 
 ![Equilibrium Engine screenshot](https://raw.githubusercontent.com/clibequilibrium/EquilibriumEngine/master/docs/city.png)
 
+## Pinhole Universe
+
+https://festina-lente-productions.com/pinhole-universe/ - Explore a generated
+world where you can zoom in on anything, forever.
+
+![Pinhole Universe capsule image](https://festina-lente-productions.com/ext/capsule_small.jpg)
+
+## Unavowed (Nintendo Switch version only)
+
+https://www.nintendo.com/us/store/products/unavowed-switch/ - A demon has possessed you
+and used your body to tear a swath of bloodshed through New York. You are now free, but
+life as you knew it is over. Your only path forward is joining the Unavowed - an ancient
+society dedicated to stopping evil. No matter what the cost.
+
+![Unavowed Title](https://assets.nintendo.com/image/upload/c_limit,f_auto,h_1000,q_auto,w_1700/v1/ncom/en_US/games/switch/u/unavowed-switch/Video/posters/Unavowed_Switch_Trailer_NOA)
+
+## The Excavation of Hob's Barrow (Nintendo Switch version only)
+
+https://www.nintendo.com/us/store/products/the-excavation-of-hobs-barrow-switch/ - A folk
+horror narrative-driven adventure. Explore the isolated moors of rural Victorian England
+as you uncover the mysteries of Hob's Barrow. The answers lie in the soil...
+
+![The Excavation of Hob's Barrow Title](https://assets.nintendo.com/image/upload/c_limit,f_auto,h_1000,q_auto,w_1700/v1/ncom/en_US/games/switch/t/the-excavation-of-hobs-barrow-switch/Video/posters/The_Excavation_of_Hob_s_Barrow)
+
+## Primordia (Nintendo Switch version only)
+
+https://www.nintendo.com/us/store/products/primordia-switch/ - Life has ceased. Man is
+but a myth. And now, even the machines have begun to fail. Lead Horatio Nullbuilt and his
+sarcastic sidekick Crispin on a journey through the crumbling world of Primordia, facing
+malfunctioning robots, ancient secrets, and an implacable, power-hungry foe.
+
+![Primordia Title](https://assets.nintendo.com/image/upload/c_limit,f_auto,h_1000,q_auto,w_1700/v1/ncom/en_US/games/switch/p/primordia-switch/Video/posters/Primordia_Trailer)
+
 [License (BSD 2-clause)](https://bkaradzic.github.io/bgfx/license.html)
 -----------------------------------------------------------------------
 
 <a href="http://opensource.org/licenses/BSD-2-Clause" target="_blank">
-<img align="right" src="http://opensource.org/trademarks/opensource/OSI-Approved-License-100x137.png">
+<img align="right" src="https://opensource.org/wp-content/uploads/2022/10/osi-badge-dark.svg" width="100" height="137">
 </a>
 
 	Copyright 2010-2023 Branimir Karadzic

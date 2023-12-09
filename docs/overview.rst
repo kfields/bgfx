@@ -17,7 +17,6 @@ licensed under permissive BSD-2 clause open source license.
 Supported rendering backends
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  Direct3D 9
 -  Direct3D 11
 -  Direct3D 12
 -  GNM (only for licensed PS4 developers, search DevNet forums for source)
@@ -29,7 +28,6 @@ Supported rendering backends
 -  Vulkan
 -  WebGL 1.0
 -  WebGL 2.0
--  WebGPU/Dawn (experimental)
 
 Supported Platforms
 ~~~~~~~~~~~~~~~~~~~
@@ -286,6 +284,7 @@ Chronological order:
  - Preetish Kakkar (`@blackhole <https://github.com/preetishkakkar>`__) - `49-hextile <examples.html#49-hextile>`__ example.
  - Biswapriyo Nath (`@Biswa96 <https://github.com/Biswa96>`__) - GitHub Actions CI.
  - Raziel Alphadios (`@RazielXYZ <https://github.com/RazielXYZ>`__) - Various fixes and improvements.
+ - IchorDev (`@IchorDev <https://github.com/ichordev>`__) - Improved D language bindings.
 
 and `others <https://github.com/bkaradzic/bgfx/graphs/contributors>`__...
 

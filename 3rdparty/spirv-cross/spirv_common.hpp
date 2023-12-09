@@ -295,6 +295,20 @@ inline std::string convert_to_string(double t, char locale_radix_point)
 	return buf;
 }
 
+#if defined(__clang__) || defined(__GNUC__)
+#pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
+class FloatFormatter
+{
+public:
+	virtual ~FloatFormatter() = default;
+	virtual std::string format_float(float value) = 0;
+	virtual std::string format_double(double value) = 0;
+};
+
 template <typename T>
 struct ValueSaver
 {
@@ -317,12 +331,6 @@ struct ValueSaver
 	T &current;
 	T saved;
 };
-
-#if defined(__clang__) || defined(__GNUC__)
-#pragma GCC diagnostic pop
-#elif defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 struct Instruction
 {
@@ -728,6 +736,9 @@ struct SPIRExpression : IVariant
 
 	// Whether or not this is an access chain expression.
 	bool access_chain = false;
+
+	// Whether or not gl_MeshVerticesEXT[].gl_Position (as a whole or .y) is referenced
+	bool access_meshlet_position_y = false;
 
 	// A list of expressions which this expression depends on.
 	SmallVector<ID> expression_dependencies;
@@ -1580,6 +1591,7 @@ struct AccessChainMeta
 	bool storage_is_invariant = false;
 	bool flattened_struct = false;
 	bool relaxed_precision = false;
+	bool access_meshlet_position_y = false;
 };
 
 enum ExtendedDecorations

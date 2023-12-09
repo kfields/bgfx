@@ -11,15 +11,16 @@ module bgfx;
 
 import bindbc.bgfx.config;
 
-import bindbc.common.types: va_list;
+import bindbc.common.types: c_int64, c_uint64, va_list;
 static import bgfx.fakeenum;
 
 $version
 
-alias ViewId = ushort;
+alias ViewID = ushort;
+
 enum invalidHandle(T) = T(ushort.max);
 
-alias ReleaseFn = void function(void* _ptr, void* _userData);
+alias ReleaseFn = void function(void* ptr, void* userData);
 
 $types
 pragma(inline,true) nothrow @nogc pure @safe{
@@ -90,12 +91,11 @@ pragma(inline,true) nothrow @nogc pure @safe{
 
 $structs
 mixin(joinFnBinds((){
-	string[][] ret;
-	ret ~= makeFnBinds([
+	FnBind[] ret = [
 		$funcs
-	]);
+	];
 	return ret;
-}(), __MODULE__, $membersWithFns));
+}(), $membersWithFns));
 
 static if(!staticBinding):
 import bindbc.loader;
@@ -129,12 +129,13 @@ end
 local enumTypes = {}
 local membersWithFns = ""
 
-local capsWords = {"Mip", "Id", "Rw", "Rt", "Pci", "Srgb", "Pt", "Ccw", "2d", "3d", "Msaa"}
+local capsWords = {"Mip", "Id", "Rw", "Vb", "Ib", "Cb", "Rt", "Pci", "Srgb", "Pt", "Ccw", "2d", "3d", "Msaa"}
 local capsRepl = {
 	hidpi = "hiDPI", lineaa = "lineAA", maxanisotropy = "maxAnisotropy",
-	notequal = "notEqual", gequal = "gEqual", lequal = "lEqual",
+	notequal = "notEqual", gequal = "gEqual", Lequal = "LEqual", lequal = "lEqual",
 	decrsat = "decrSat", incrsat = "incrSat", revsub = "revSub",
 	linestrip = "lineStrip", tristrip = "triStrip",
+	bstencil = "bStencil", fstencil = "fStencil",
 }
 
 local function abbrevsToUpper(name)
@@ -174,7 +175,14 @@ end
 -- 	return (name:gsub("^%l", string.upper))
 -- end
 
-local usEnSubs = {Color = "Colour", Rasterize = "Rasterise", Initialize = "Initialise"}
+local usEnSubs = {
+	color = "colour", Color = "Colour",
+	rasterize = "rasterise", Rasterize = "Rasterise",
+	initialize = "initialise", Initialize = "Initialise",
+	normalize = "normalise", Normalize = "Normalise",
+	normalized = "normalised", Normalized = "Normalised",
+	ccw = "acw", CCW = "ACW",
+}
 local function toIntlEn(name)
 	local change = false
 	for us, intl in pairs(usEnSubs) do
@@ -188,6 +196,15 @@ local function toIntlEn(name)
 	else
 		return nil
 	end
+end
+
+-- Unconditionally convert
+local function toIntlEnUncond(name)
+	local newName = toIntlEn(name)
+	if newName ~= nil then
+		return newName
+	end
+	return name
 end
 
 local function hexStr(val, bits)
@@ -211,20 +228,20 @@ local function convArray(array)
 end
 
 local typeSubs = {
-	uint32_t  = "uint",   int32_t = "int",
-	uint16_t  = "ushort", int16_t = "short",
-	uint64_t  = "ulong",  int64_t = "long",
-	uint8_t   = "ubyte",  int8_t  = "byte",
-	uintptr_t = "size_t"
+	{"uint32_t",  "uint"},     {"int32_t", "int"},
+	{"uint16_t",  "ushort"},   {"int16_t", "short"},
+	{"uint64_t",  "c_uint64"}, {"int64_t", "c_int64"},
+	{"uint8_t",   "ubyte"},    {"int8_t",  "byte"},
+	{"uintptr_t", "size_t"}
 }
 local function convSomeType(arg, isFnArg)
 	local type = arg.fulltype
 	if type == "bx::AllocatorI*" or type == "CallbackI*" then
 		type = "void*"
 	else
-		for from, to in pairs(typeSubs) do
-			if type:find(from) then
-				type = type:gsub(from, to)
+		for _, item in ipairs(typeSubs) do
+			if type:find(item[1]) then
+				type = type:gsub(item[1], item[2])
 				break
 			end
 		end
@@ -252,6 +269,7 @@ local function convSomeType(arg, isFnArg)
 			end
 		end
 		type = type:gsub("const%s+([A-Za-z_][A-Za-z0-9_]*)%s*%*", "const(%1)*") --change `const x*` to `const(x)*`
+		type = abbrevsToUpper(type)
 	end
 	
 	return type
@@ -326,7 +344,7 @@ local function genVersion()
 end
 
 local function genStructMemberFn(func) --NOTE: this does not work on nested structs
-	if func.class ~= nil and func.conly == nil then
+	if func.class ~= nil and func.conly == nil and func.cppinline == nil then
 		local st = allStructs[func.class]
 		local attribs = ""
 		if func.comments ~= nil then
@@ -355,7 +373,7 @@ local function genStructMemberFn(func) --NOTE: this does not work on nested stru
 			
 			for _, arg in ipairs(func.args) do
 				if arg.comment ~= nil then
-					table.insert(st.fns, "\t" .. convName(arg.name:sub(2)) .. " = " .. arg.comment[1])
+					table.insert(st.fns, "\t" .. toIntlEnUncond(convName(arg.name:sub(2))) .. " = " .. arg.comment[1])
 					for i, comment in ipairs(arg.comment) do
 						if i > 1 then
 							table.insert(st.fns, comment)
@@ -376,7 +394,7 @@ local function genStructMemberFn(func) --NOTE: this does not work on nested stru
 			if arg.fulltype == "..." then
 				table.insert(args, "..." .. def)
 			else
-				table.insert(args, convFnArgType(arg) .. " " .. convName(arg.name:sub(2)) .. def)
+				table.insert(args, convFnArgType(arg) .. " " .. toIntlEnUncond(convName(arg.name:sub(2))) .. def)
 			end
 		end
 		
@@ -384,10 +402,10 @@ local function genStructMemberFn(func) --NOTE: this does not work on nested stru
 			attribs = "const"
 		end
 		if attribs ~= "" then
-			attribs = ", q{" .. attribs .. "}"
+			attribs = ", memAttr: q{" .. attribs .. "}"
 		end
 		
-		table.insert(st.fns, string.format("[q{%s}, q{%s}, q{%s}, `C++`%s],", convType(func.ret), func.name, table.concat(args, ", "), attribs))
+		table.insert(st.fns, string.format("{q{%s}, q{%s}, q{%s}, ext: `C++`%s},", convType(func.ret), func.name, table.concat(args, ", "), attribs))
 	end
 end
 
@@ -432,20 +450,22 @@ function gen.gen()
 			for _, fn in ipairs(idl.funcs) do
 				genStructMemberFn(fn)
 			end
-			for name, object in pairs(allStructs) do
-				local co = coroutine.create(converter[what])
-				local any
-				while true do
-					local ok, v = coroutine.resume(co, object, name, indent:len())
-					assert(ok, debug.traceback(co, v))
-					if not v then
-						break
+			for _, object in ipairs(idl["types"]) do
+				if object.struct ~= nil and object.namespace == nil then
+					local co = coroutine.create(converter[what])
+					local any
+					while true do
+						local ok, v = coroutine.resume(co, allStructs[object.name], object.name, true, indent:len())
+						assert(ok, debug.traceback(co, v))
+						if not v then
+							break
+						end
+						table.insert(tmp, v)
+						any = true
 					end
-					table.insert(tmp, v)
-					any = true
-				end
-				if any and tmp[#tmp] ~= "" then
-					table.insert(tmp, "")
+					if any and tmp[#tmp] ~= "" then
+						table.insert(tmp, "")
+					end
 				end
 			end
 		elseif what == "membersWithFns" then
@@ -473,19 +493,23 @@ function gen.gen()
 	return r
 end
 
-function converter.structs(st, name)
+function converter.structs(st, name, topLvl)
 	for _, line in ipairs(st.comments) do
 		yield(line)
 	end
 	
-	yield("extern(C++, \"bgfx\") struct " .. name .. "{")
+	if topLvl then
+		yield("extern(C++, \"bgfx\") struct " .. name .. "{")
+	else
+		yield("extern(C++) struct " .. name .. "{")
+	end
 	
 	local subN = 0
-	for subName, subStruct in pairs(st.subs) do
+	for _, subStruct in ipairs(st.subs) do
 		subN = subN + 1
 		local co = coroutine.create(converter.structs)
 		while true do
-			local ok, v = coroutine.resume(co, subStruct, subName)
+			local ok, v = coroutine.resume(co, subStruct, subStruct.name, false)
 			assert(ok, debug.traceback(co, v))
 			if not v then
 				break
@@ -504,14 +528,13 @@ function converter.structs(st, name)
 	if #st.fns > 0 then
 		membersWithFns = membersWithFns .. name .. ", "
 		yield("\textern(D) mixin(joinFnBinds((){")
-		yield("\t\tstring[][] ret;")
-		yield("\t\tret ~= makeFnBinds([")
+		yield("\t\tFnBind[] ret = [")
 		for _, line in ipairs(st.fns) do
 			yield("\t\t\t" .. line)
 		end
-		yield("\t\t], true);")
+		yield("\t\t];")
 		yield("\t\treturn ret;")
-		yield("\t}(), typeof(this).stringof));")
+		yield("\t}()));")
 	end
 	
 	yield("}")
@@ -524,7 +547,7 @@ function converter.types(typ)
 		else
 			yield("/**")
 			for _, comment in ipairs(typ.comments) do
-				yield("* " .. comment)
+				yield(comment)
 			end
 			yield("*/")
 		end
@@ -536,9 +559,11 @@ function converter.types(typ)
 		yield("}")
 		--yield(typ.name .. " invalidHandle(){ return " .. typ.name .. "(ushort.max); }")
 	
+	-- For some reason, this has never worked, so I'm commenting it out just in case it does start working suddenly. :P
+	--[[
 	elseif typ.funcptr then
 		local args = {}
-		for _, arg in ipairs(func.args) do
+		for _, arg in ipairs(typ.args) do
 			if arg.fulltype == "..." then
 				table.insert(args, "..." .. def)
 			else
@@ -546,13 +571,12 @@ function converter.types(typ)
 			end
 		end
 		
-		yield(string.format("alias %s = extern(C++) %s function(%s);", func.name, convType(func.ret), table.concat(args, ", ")))
-		
+		yield(string.format("alias %s = extern(C++) %s function(%s);", typ.name, convType(typ.ret), table.concat(args, ", ")))
+	--]]
 	elseif typ.enum then
 		local typeName = abbrevsToUpper(typ.name:gsub("::Enum", ""))
-		local otherName = string.format("bgfx.fakeenum.%s.Enum", typeName)
+		local otherName = string.format("bgfx.fakeenum.%s.Enum", typ.name:gsub("::Enum", ""))
 		
-		yield("")
 		yield("enum " .. typeName .. ": " .. otherName .. "{")
 		table.insert(enumTypes, typeName)
 		
@@ -680,20 +704,20 @@ extern(C++, "bgfx") package final abstract class %s{
 				if #flag.comment == 1 then
 					comments = " ///" .. flag.comment[1]
 				else
-					yield("/**")
+					yield("\t/**")
 					for _, comment in ipairs(flag.comment) do
-						yield(comment)
+						yield("\t" .. comment)
 					end
-					yield("*/")
+					yield("\t*/")
 				end
 			end
 			
 			local name = convName(toCamelCase(flag.name))
 			yield("\t" .. name .. string.rep(" ", maxLen+2 - name:len()) .. "= " .. value .. "," .. comments)
 			
-			local intlName = toIntlEn(flag.name)
+			local intlName = toIntlEn(name)
 			if intlName ~= nil then
-				intlName = convName(toCamelCase(intlName))
+				intlName = intlName
 				yield("\t" .. intlName .. string.rep(" ", maxLen+2 - intlName:len()) .. "= " .. name .. ",")
 			end
 		end
@@ -736,7 +760,7 @@ extern(C++, "bgfx") package final abstract class %s{
 			end
 		end
 	elseif typ.struct ~= nil then
-		local st = {comments = {}, fields = {}, fns = {}, subs = {}}
+		local st = {name = typ.name, comments = {}, fields = {}, fns = {}, subs = {}}
 		
 		if typ.comments ~= nil then
 			if #typ.comments == 1 then
@@ -770,16 +794,16 @@ extern(C++, "bgfx") package final abstract class %s{
 		end
 		
 		if typ.ctor ~= nil and typ.name ~= "PlatformData" then
-			table.insert(st.fns, "[q{void}, q{this}, q{}, `C++`],")
+			table.insert(st.fns, "{q{void}, q{this}, q{}, ext: `C++`},")
 		end
 		
-		if typ.namespace ~= nil then
+		if typ.namespace ~= nil then --if this is a sub-struct
 			if allStructs[typ.namespace] ~= nil then
-				allStructs[typ.namespace].subs[typ.name] = st
+				table.insert(allStructs[typ.namespace].subs, st)
 			else
-				allStructs[typ.namespace] = {subs = {[typ.name] = st}}
+				allStructs[typ.namespace] = {subs = {st}}
 			end
-		else
+		else --otherwise it's top-level
 			if allStructs[typ.name] ~= nil then
 				st.subs = allStructs[typ.name].subs
 			end
@@ -789,7 +813,7 @@ extern(C++, "bgfx") package final abstract class %s{
 end
 
 function converter.funcs(func)
-	if func.class == nil and func.conly == nil then
+	if func.class == nil and func.conly == nil and func.cppinline == nil then
 		local extern = "C++, \"bgfx\""
 		local attribs = ""
 		if func.cfunc ~= nil and func.name ~= "init" then --what the is "cfunc" even meant to mean?
@@ -818,7 +842,7 @@ function converter.funcs(func)
 			
 			for _, arg in ipairs(func.args) do
 				if arg.comment ~= nil then
-					yield("\t" .. convName(arg.name:sub(2)) .. " = " .. arg.comment[1])
+					yield("\t" .. toIntlEnUncond(convName(arg.name:sub(2))) .. " = " .. arg.comment[1])
 					for i, comment in ipairs(arg.comment) do
 						if i > 1 then
 							yield(comment)
@@ -839,15 +863,15 @@ function converter.funcs(func)
 			if arg.fulltype == "..." then
 				table.insert(args, "..." .. def)
 			else
-				table.insert(args, convFnArgType(arg) .. " " .. convName(arg.name:sub(2)) .. def)
+				table.insert(args, convFnArgType(arg) .. " " .. toIntlEnUncond(convName(arg.name:sub(2))) .. def)
 			end
 		end
 		
 		if attribs ~= "" then
-			attribs = ", q{" .. attribs .. "}"
+			attribs = ", memAttr: q{" .. attribs .. "}"
 		end
 		
-		yield(string.format("[q{%s}, q{%s}, q{%s}, `%s`%s],", convType(func.ret), func.name, table.concat(args, ", "), extern, attribs))
+		yield(string.format("{q{%s}, q{%s}, q{%s}, ext: `%s`%s},", convType(func.ret), func.name, table.concat(args, ", "), extern, attribs))
 	end
 end
 

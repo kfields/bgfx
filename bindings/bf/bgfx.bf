@@ -1148,14 +1148,19 @@ public static class bgfx
 		VertexId               = 0x0000000008000000,
 	
 		/// <summary>
+		/// PrimitiveID is available in fragment shader.
+		/// </summary>
+		PrimitiveId            = 0x0000000010000000,
+	
+		/// <summary>
 		/// Viewport layer is available in vertex shader.
 		/// </summary>
-		ViewportLayerArray     = 0x0000000010000000,
+		ViewportLayerArray     = 0x0000000020000000,
 	
 		/// <summary>
 		/// Draw indirect with indirect count is supported.
 		/// </summary>
-		DrawIndirectCount      = 0x0000000020000000,
+		DrawIndirectCount      = 0x0000000040000000,
 	
 		/// <summary>
 		/// All texture compare modes are supported.
@@ -1370,11 +1375,6 @@ public static class bgfx
 		Agc,
 	
 		/// <summary>
-		/// Direct3D 9.0
-		/// </summary>
-		Direct3D9,
-	
-		/// <summary>
 		/// Direct3D 11.0
 		/// </summary>
 		Direct3D11,
@@ -1413,11 +1413,6 @@ public static class bgfx
 		/// Vulkan
 		/// </summary>
 		Vulkan,
-	
-		/// <summary>
-		/// WebGPU
-		/// </summary>
-		WebGPU,
 	
 		Count
 	}
@@ -2012,6 +2007,22 @@ public static class bgfx
 	}
 	
 	[AllowDuplicates]
+	public enum NativeWindowHandleType : uint32
+	{
+		/// <summary>
+		/// Platform default handle type (X11 on Linux).
+		/// </summary>
+		Default,
+	
+		/// <summary>
+		/// Wayland.
+		/// </summary>
+		Wayland,
+	
+		Count
+	}
+	
+	[AllowDuplicates]
 	public enum RenderFrame : uint32
 	{
 		/// <summary>
@@ -2103,6 +2114,7 @@ public static class bgfx
 		public void* context;
 		public void* backBuffer;
 		public void* backBufferDS;
+		public NativeWindowHandleType type;
 	}
 	
 	[CRepr]
@@ -2993,6 +3005,8 @@ public static class bgfx
 	
 	/// <summary>
 	/// Create shader from memory buffer.
+	/// @remarks
+	///   Shader binary is obtained by compiling shader offline with shaderc command line tool.
 	/// </summary>
 	///
 	/// <param name="_mem">Shader binary.</param>

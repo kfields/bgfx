@@ -1,7 +1,7 @@
 -- vim: syntax=lua
 -- bgfx interface
 
-version(121)
+version(124)
 
 typedef "bool"
 typedef "char"
@@ -393,6 +393,7 @@ flag.Caps { bits = 64, base = 1, name = "Caps" }
 	.VertexAttribHalf       --- Vertex attribute half-float is supported.
 	.VertexAttribUint10     --- Vertex attribute 10_10_10_2 is supported.
 	.VertexId               --- Rendering with VertexID only is supported.
+	.PrimitiveId            --- PrimitiveID is available in fragment shader.
 	.ViewportLayerArray     --- Viewport layer is available in vertex shader.
 	.DrawIndirectCount      --- Draw indirect with indirect count is supported.
 	.TextureCompareAll      --- All texture compare modes are supported.
@@ -457,7 +458,6 @@ enum.Fatal { underscore, comment = "" }
 enum.RendererType { comment = "Renderer types:" }
 	.Noop       --- No rendering.
 	.Agc        --- AGC
-	.Direct3D9  --- Direct3D 9.0
 	.Direct3D11 --- Direct3D 11.0
 	.Direct3D12 --- Direct3D 12.0
 	.Gnm        --- GNM
@@ -466,7 +466,6 @@ enum.RendererType { comment = "Renderer types:" }
 	.OpenGLES   --- OpenGL ES 2.0+
 	.OpenGL     --- OpenGL 2.1+
 	.Vulkan     --- Vulkan
-	.WebGPU     --- WebGPU
 	()
 
 --- Access mode enum.
@@ -689,6 +688,12 @@ enum.ViewMode { underscore, comment = "View modes:" }
 	.DepthDescending --- Sort draw call depth in descending order.
 	()
 
+--- Native window handle type.
+enum.NativeWindowHandleType { underscore, comment = "Native Window handle type:" }
+	.Default         --- Platform default handle type (X11 on Linux).
+	.Wayland      	 --- Wayland.
+	()
+
 --- Render frame enum.
 enum.RenderFrame { underscore, comment = "" }
 	.NoContext --- Renderer context is not created yet.
@@ -773,15 +778,16 @@ struct.InternalData
 
 --- Platform data.
 struct.PlatformData { ctor }
-	.ndt          "void*" --- Native display type (*nix specific).
-	.nwh          "void*" --- Native window handle. If `NULL`, bgfx will create a headless
-	                      --- context/device, provided the rendering API supports it.
-	.context      "void*" --- GL context, D3D device, or Vulkan device. If `NULL`, bgfx
-						  --- will create context/device.
-	.backBuffer   "void*" --- GL back-buffer, or D3D render target view. If `NULL` bgfx will
-	                      --- create back-buffer color surface.
-	.backBufferDS "void*" --- Backbuffer depth/stencil. If `NULL`, bgfx will create a back-buffer
-	                      --- depth/stencil surface.
+	.ndt          "void*" 							--- Native display type (*nix specific).
+	.nwh          "void*" 							--- Native window handle. If `NULL`, bgfx will create a headless
+													--- context/device, provided the rendering API supports it.
+	.context      "void*" 							--- GL context, D3D device, or Vulkan device. If `NULL`, bgfx
+													--- will create context/device.
+	.backBuffer   "void*" 							--- GL back-buffer, or D3D render target view. If `NULL` bgfx will
+													--- create back-buffer color surface.
+	.backBufferDS "void*" 							--- Backbuffer depth/stencil. If `NULL`, bgfx will create a back-buffer
+													--- depth/stencil surface.
+	.type		  "NativeWindowHandleType::Enum" 	--- Handle type. Needed for platforms having more than one option.
 
 --- Backbuffer resolution and reset parameters.
 struct.Resolution { ctor }
@@ -1039,7 +1045,7 @@ func.VertexLayout.decode { const }
 	.asInt      "bool &"             { out } --- Attribute is packed as int.
 
 --- Returns `true` if VertexLayout contains attribute.
-func.VertexLayout.has { const }
+func.VertexLayout.has { const, conly, cppinline }
 	"bool"                 --- True if VertexLayout contains attribute.
 	.attrib "Attrib::Enum" --- Attribute semantics. See: `bgfx::Attrib`
 
@@ -1054,16 +1060,16 @@ func.VertexLayout["end"]
 	"void"
 
 --- Returns relative attribute offset from the vertex.
-func.VertexLayout.getOffset { const , cpponly }
+func.VertexLayout.getOffset { const, cppinline }
 	"uint16_t"                --- Relative attribute offset from the vertex.
 	.attrib    "Attrib::Enum" --- Attribute semantics. See: `bgfx::Attrib`
 
 --- Returns vertex stride.
-func.VertexLayout.getStride { const , cpponly }
+func.VertexLayout.getStride { const, cppinline }
 	"uint16_t" --- Vertex stride.
 
 --- Returns size of vertex buffer for number of vertices.
-func.VertexLayout.getSize { const, cpponly }
+func.VertexLayout.getSize { const, cppinline }
 	"uint32_t"      --- Size of vertex buffer for number of vertices.
 	.num "uint32_t" --- Number of vertices.
 
@@ -1557,6 +1563,10 @@ func.destroy { cname = "destroy_indirect_buffer" }
 	.handle "IndirectBufferHandle" --- Indirect buffer handle.
 
 --- Create shader from memory buffer.
+---
+--- @remarks
+---   Shader binary is obtained by compiling shader offline with shaderc command line tool.
+---
 func.createShader
 	"ShaderHandle"       --- Shader handle.
 	.mem "const Memory*" --- Shader binary.
@@ -2132,6 +2142,7 @@ func.resetView
 func.begin { cname = "encoder_begin" }
 	"Encoder*"        --- Encoder.
 	.forThread "bool" --- Explicitly request an encoder for a worker thread.
+	 { default = false }
 
 --- End submitting draw calls from thread.
 func["end"] { cname = "encoder_end" }
@@ -2215,6 +2226,7 @@ func.Encoder.setTransform
 	                   --- to be used for other draw primitive call.
 	.mtx "const void*" --- Pointer to first matrix in array.
 	.num "uint16_t"    --- Number of matrices in array.
+	 { default = 1 }
 
 ---  Set model matrix from matrix cache for draw primitive.
 func.Encoder.setTransform { cname = "set_transform_cached" }
@@ -2703,6 +2715,7 @@ func.overrideInternal { cname = "override_internal_texture" }
 	                               ---   mode.
 	                               --- - `BGFX_SAMPLER_[MIN/MAG/MIP]_[POINT/ANISOTROPIC]` - Point or anisotropic
 	                               ---   sampling.
+	{ default = "BGFX_TEXTURE_NONE | BGFX_SAMPLER_NONE" }
 
 -- Legacy API:
 
@@ -2783,6 +2796,7 @@ func.setTransform
 	                   --- to be used for other draw primitive call.
 	.mtx "const void*" --- Pointer to first matrix in array.
 	.num "uint16_t"    --- Number of matrices in array.
+	 { default = 1 }
 
 ---  Set model matrix from matrix cache for draw primitive.
 func.setTransform { cname = "set_transform_cached" }
